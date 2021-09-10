@@ -1,0 +1,52 @@
+---
+- hosts: "{{ nodes }}"
+  become: true
+
+  tasks:
+    - name: Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: cloning from git    
+      ansible.builtin.git:
+        repo: "https://github.com/hari-05/repo1.git"
+        dest: "/tomcat1"
+        update: yes
+      delegate_to: localhost
+
+    - name: Install JAVA related Ubuntu packages
+      apt:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+          - openjdk-8-jdk
+          - tomcat9
+          - tomcat9-examples
+          - tomcat9-docs
+    - name: copy war
+      copy: src=/tomcat1/addressbook.war dest=/var/lib/tomcat9/webapps/addressbook.war mode=0744
+
+  
+
+    
+    - name: Make sure a service is running
+      ansible.builtin.systemd:
+        state: started
+        enabled: true
+        name: tomcat9
+    
+    - name: Open Tomcat port
+      ufw:
+        state: enabled
+        rule: allow
+        port: "8080"
+        proto: tcp
+
+    - name: Open SSH port
+      ufw:
+        state: enabled
+        rule: allow
+        port: "22"
+        proto: tcp
